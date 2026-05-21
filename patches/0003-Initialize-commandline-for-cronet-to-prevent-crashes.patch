@@ -1,7 +1,7 @@
 From 61fbe221e04d390f8ed9566d03b1150a837a3300 Mon Sep 17 00:00:00 2001
 From: Zifei Tong <zifeitong@gmail.com>
 Date: Sat, 16 Aug 2025 17:38:44 -0700
-Subject: [PATCH 3/4] Initialize commandline for cronet to prevent crashes
+Subject: [PATCH] Initialize commandline for cronet to prevent crashes
 
 ---
  components/cronet/cronet_global_state_stubs.cc | 3 +++

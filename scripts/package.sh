@@ -9,7 +9,7 @@ pushd chromium-$pkgver/out/release/cronet
 cat > MODULE.bazel <<EOF
 module(name = "prebuilt_cronet_native", version = "${pkgver}")
 
-bazel_dep(name = "rules_cc", version = "0.2.14")
+bazel_dep(name = "rules_cc", version = "0.2.17")
 bazel_dep(name = "platforms", version = "1.0.0")
 EOF
 

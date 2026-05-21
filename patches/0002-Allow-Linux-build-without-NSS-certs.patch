@@ -1,7 +1,7 @@
 From ac1d8ec15d491f9b024db6b26a2c3f1c54f46cf7 Mon Sep 17 00:00:00 2001
 From: Zifei Tong <zifeitong@gmail.com>
 Date: Sat, 16 Aug 2025 17:13:25 -0700
-Subject: [PATCH 2/4] Allow Linux build without NSS certs
+Subject: [PATCH] Allow Linux build without NSS certs
 
 by using only Chrome Root Store.
 ---

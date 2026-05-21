@@ -1,7 +1,7 @@
 From 5ef39cdfc6a5c153ed3a83ba891d60763eab9cd5 Mon Sep 17 00:00:00 2001
 From: Zifei Tong <zifeitong@gmail.com>
 Date: Wed, 20 Aug 2025 22:00:54 -0700
-Subject: [PATCH 4/4] Hide private cronet symbols
+Subject: [PATCH] Hide private cronet symbols
 
 ---
  components/cronet/BUILD.gn                  |  7 +++++++

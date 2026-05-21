@@ -1,7 +1,7 @@
 From 581b6dbee2e6b4855281764179a5a9b801b7658a Mon Sep 17 00:00:00 2001
 From: Zifei Tong <zifeitong@gmail.com>
 Date: Sat, 16 Aug 2025 17:10:34 -0700
-Subject: [PATCH 1/4] Enable EVRootCAMetadata in Linux w/o NSS
+Subject: [PATCH] Enable EVRootCAMetadata in Linux w/o NSS
 
 ---
  net/cert/ev_root_ca_metadata.h | 2 +-
