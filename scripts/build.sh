@@ -37,7 +37,6 @@ gn_args=(
   'use_nss_certs=false'
 
   # headless build
-  'enable_print_preview=false'
   'enable_remoting=false'
   'ozone_platform="headless"'
   'rtc_use_pipewire=false'
