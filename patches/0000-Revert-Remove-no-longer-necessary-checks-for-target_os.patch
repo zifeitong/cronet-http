@@ -1,0 +1,170 @@
+From: Zifei Tong <zifeitong@gmail.com>
+Date: Sat, 12 Sep 2026 12:00:00 -0700
+Subject: [PATCH] Revert "Remove no longer necessary checks for target_os"
+
+This reverts the parts of upstream 99eb5bd78a55d1 ("Remove no longer
+necessary checks for target_os", crrev.com/c/8061090).
+---
+ components/cronet/BUILD.gn                  | 24 ++++++++++++++++--------
+ components/cronet/cronet_url_request.cc     | 16 ++++++++++++++--
+ components/cronet/network_tasks_unittest.cc |  8 ++++++++
+ 3 files changed, 38 insertions(+), 10 deletions(-)
+
+diff --git a/components/cronet/BUILD.gn b/components/cronet/BUILD.gn
+index a2daa1c389..171ffdb125 100644
+--- a/components/cronet/BUILD.gn
++++ b/components/cronet/BUILD.gn
+@@ -3,7 +3,6 @@
+ # found in the LICENSE file.
+ 
+ import("//build/buildflag_header.gni")
+-import("//build/config/android/rules.gni")
+ import("//build/toolchain/toolchain.gni")
+ import("//build/util/lastchange.gni")
+ import("//build/util/process_version.gni")
+@@ -25,9 +24,13 @@
+   sources = [ "proto/request_context_config.proto" ]
+ }
+ 
+-proto_java_library("request_context_config_java_proto") {
+-  proto_path = "."
+-  sources = [ "proto/request_context_config.proto" ]
++if (is_android) {
++  import("//build/config/android/rules.gni")
++
++  proto_java_library("request_context_config_java_proto") {
++    proto_path = "."
++    sources = [ "proto/request_context_config.proto" ]
++  }
+ }
+ 
+ # Cronet common implementation.
+@@ -54,11 +57,14 @@
+     ":metrics_util",
+     ":request_context_config_proto",
+     "//base",
+-    "//components/cronet/android:cronet_jni_headers",
+     "//components/prefs",
+     "//net",
+   ]
+ 
++  if (is_android) {
++    deps += [ "//components/cronet/android:cronet_jni_headers" ]
++  }
++
+   public_deps = [ "//components/metrics:library_support" ]
+ }
+ 
+@@ -91,7 +97,9 @@
+   ]
+ }
+ 
+-group("cronet_package") {
+-  testonly = true
+-  deps = [ "//components/cronet/android:cronet_package_android" ]
++if (is_android) {
++  group("cronet_package") {
++    testonly = true
++    deps = [ "//components/cronet/android:cronet_package_android" ]
++  }
+ }
+diff --git a/components/cronet/cronet_url_request.cc b/components/cronet/cronet_url_request.cc
+index b86adbac2c..a330f4fa89 100644
+--- a/components/cronet/cronet_url_request.cc
++++ b/components/cronet/cronet_url_request.cc
+@@ -7,15 +7,19 @@
+ #include <limits>
+ #include <utility>
+ 
+-#include "base/android/jni_android.h"
+-#include "base/android/jni_string.h"
+ #include "base/byte_size.h"
+ #include "base/functional/bind.h"
+ #include "base/location.h"
+ #include "base/logging.h"
+ #include "base/notreached.h"
+ #include "build/build_config.h"
++
++#if BUILDFLAG(IS_ANDROID)
++#include "base/android/jni_android.h"
++#include "base/android/jni_string.h"
+ #include "components/cronet/android/cronet_jni_headers/CronetPccAuditLogger_jni.h"
++#endif
++
+ #include "components/cronet/cronet_context.h"
+ #include "components/cronet/metrics_util.h"
+ #include "net/base/idempotency.h"
+@@ -222,11 +226,13 @@
+   DCHECK_CALLED_ON_VALID_THREAD(network_thread_checker_);
+   received_byte_count_from_redirects_ +=
+       request->GetTotalReceivedBytes().InBytes();
++#if BUILDFLAG(IS_ANDROID)
+   {
+     JNIEnv* env = base::android::AttachCurrentThread();
+     cronet::Java_CronetPccAuditLogger_maybeWrite(env,
+                                                  redirect_info.new_url.spec());
+   }
++#endif
+   callback_->OnReceivedRedirect(
+       redirect_info.new_url.spec(), redirect_info.status_code,
+       request->response_headers()->GetStatusText(), request->response_headers(),
+@@ -351,15 +357,21 @@
+   if (upload)
+     url_request_->set_upload(std::move(upload));
+   if (traffic_stats_tag_set_ || traffic_stats_uid_set_) {
++#if BUILDFLAG(IS_ANDROID)
+     url_request_->set_socket_tag(net::SocketTag(
+         traffic_stats_uid_set_ ? traffic_stats_uid_ : net::SocketTag::UNSET_UID,
+         traffic_stats_tag_set_ ? traffic_stats_tag_
+                                : net::SocketTag::UNSET_TAG));
++#else
++    NOTREACHED();
++#endif
+   }
++#if BUILDFLAG(IS_ANDROID)
+   {
+     JNIEnv* env = base::android::AttachCurrentThread();
+     cronet::Java_CronetPccAuditLogger_maybeWrite(env, initial_url_.spec());
+   }
++#endif
+   url_request_->Start();
+ }
+ 
+diff --git a/components/cronet/network_tasks_unittest.cc b/components/cronet/network_tasks_unittest.cc
+index bbffe2fb04..dc08de472e 100644
+--- a/components/cronet/network_tasks_unittest.cc
++++ b/components/cronet/network_tasks_unittest.cc
+@@ -212,6 +212,7 @@
+ };
+ 
+ TEST_F(NetworkTasksTest, NetworkBoundContextLifetime) {
++#if BUILDFLAG(IS_ANDROID)
+   constexpr net::handles::NetworkHandle kNetwork = 1;
+ 
+   CheckURLRequestContextExistence(kNetwork, false);
+@@ -222,9 +223,13 @@
+   scoped_ncn_->mock_network_change_notifier()->NotifyNetworkDisconnected(
+       kNetwork);
+   CheckURLRequestContextExistence(kNetwork, false);
++#else
++  GTEST_SKIP() << "Network binding is supported only on Android";
++#endif  // BUILDFLAG(IS_ANDROID)
+ }
+ 
+ TEST_F(NetworkTasksTest, NetworkBoundContextWithPendingRequest) {
++#if BUILDFLAG(IS_ANDROID)
+   constexpr net::handles::NetworkHandle kNetwork = 1;
+ 
+   CheckURLRequestContextExistence(kNetwork, false);
+@@ -245,6 +250,9 @@
+   ReleaseURLRequest();
+   MaybeDestroyURLRequestContext(kNetwork);
+   CheckURLRequestContextExistence(kNetwork, false);
++#else
++  GTEST_SKIP() << "Network binding is supported only on Android";
++#endif  // BUILDFLAG(IS_ANDROID)
+ }
+ 
+ }  // namespace
+-- 
+2.53.0
