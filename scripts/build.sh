@@ -34,7 +34,8 @@ gn_args=(
   'is_official_build=true'
   'disable_fieldtrial_testing_config=true'
   'symbol_level=0'
-  'use_nss_certs=false'
+  'use_nss_client_certs=false'
+  'use_nss_server_certs=false'
 
   # headless build
   'enable_remoting=false'
