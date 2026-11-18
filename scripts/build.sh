@@ -58,7 +58,8 @@ gn_args=(
   'icu_use_data_file=false'
 )
 
-buildtools/linux64/gn gen out/release --args="${gn_args[*]}"
+buildtools/linux64/gn gen out/release --script-executable=python3 \
+  --args="${gn_args[*]}"
 third_party/siso/cipd/siso ninja --offline -C out/release cronet_package
 
 # Build for arm64
@@ -68,5 +69,6 @@ third_party/siso/cipd/siso ninja --offline -C out/release cronet_package
 gn_args+=(
   'target_cpu="arm64"'
 )
-buildtools/linux64/gn gen out/release_arm64 --args="${gn_args[*]}"
+buildtools/linux64/gn gen out/release_arm64 --script-executable=python3 \
+  --args="${gn_args[*]}"
 third_party/siso/cipd/siso ninja --offline -C out/release_arm64 cronet_package
