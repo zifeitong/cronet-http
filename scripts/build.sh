@@ -30,6 +30,9 @@ ls ../patches/*.patch | xargs -n 1 patch -p1 -i
 ./build/linux/sysroot_scripts/install-sysroot.py --arch=x64
 
 # Build shared library
+#
+# NOTE: build with the in-tree ninja instead of siso: the official tarball
+# stopped shipping third_party/siso as of 158.0.8127.36.
 gn_args=(
   'is_official_build=true'
   'disable_fieldtrial_testing_config=true'
@@ -60,7 +63,7 @@ gn_args=(
 
 buildtools/linux64/gn gen out/release --script-executable=python3 \
   --args="${gn_args[*]}"
-third_party/siso/cipd/siso ninja --offline -C out/release cronet_package
+third_party/ninja/ninja -C out/release cronet_package
 
 # Build for arm64
 ./build/install-build-deps.sh --arm
@@ -71,4 +74,4 @@ gn_args+=(
 )
 buildtools/linux64/gn gen out/release_arm64 --script-executable=python3 \
   --args="${gn_args[*]}"
-third_party/siso/cipd/siso ninja --offline -C out/release_arm64 cronet_package
+third_party/ninja/ninja -C out/release_arm64 cronet_package
