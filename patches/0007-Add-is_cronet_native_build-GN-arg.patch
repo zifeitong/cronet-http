@@ -1,0 +1,167 @@
+From 79749d5aa8edb1bf3bb2ae5a9365d7597e5949da Mon Sep 17 00:00:00 2001
+From: Zifei Tong <zifeitong@gmail.com>
+Date: Fri, 20 Nov 2026 12:00:00 -0800
+Subject: [PATCH] Add is_cronet_native_build GN arg
+
+Since 158, TransportSecurityState::AddHPKP() and
+SetEnablePublicKeyPinningBypassForLocalTrustAnchors() only exist under
+BUILDFLAG(CRONET_BUILD), which breaks the native cronet build.
+
+Add an is_cronet_native_build GN arg and a matching
+BUILDFLAG(CRONET_NATIVE_BUILD) that enable them, and the dynamic key
+pinning state backing them, without the rest of is_cronet_build.
+---
+ build/config/cronet/config.gni       |  2 ++
+ net/BUILD.gn                         | 10 +++++++---
+ net/cert/key_pinning_state.h         |  2 +-
+ net/features.gni                     |  3 ++-
+ net/http/transport_security_state.cc |  4 ++--
+ net/http/transport_security_state.h  | 10 +++++-----
+ 6 files changed, 19 insertions(+), 12 deletions(-)
+
+diff --git a/build/config/cronet/config.gni b/build/config/cronet/config.gni
+index e529cc5..ef0100a 100644
+--- a/build/config/cronet/config.gni
++++ b/build/config/cronet/config.gni
+@@ -29,6 +29,8 @@ declare_args() {
+   # Signals that Cronet is being built. Building within Android always implies
+   # that Cronet is being built.
+   is_cronet_build = is_cronet_for_aosp_build
++
++  is_cronet_native_build = false
+ }
+ 
+ # This should only ever happen if one decides to override, at the same time,
+diff --git a/net/BUILD.gn b/net/BUILD.gn
+index a7353c1..8aebf0b 100644
+--- a/net/BUILD.gn
++++ b/net/BUILD.gn
+@@ -111,7 +111,10 @@ if (is_linux || is_chromeos) {
+ buildflag_header("cronet_buildflags") {
+   header = "cronet_buildflags.h"
+   header_dir = "net/base"
+-  flags = [ "CRONET_BUILD=$is_cronet_build" ]
++  flags = [
++    "CRONET_BUILD=$is_cronet_build",
++    "CRONET_NATIVE_BUILD=$is_cronet_native_build",
++  ]
+ }
+ 
+ buildflag_header("disk_cache_buildflags") {
+@@ -1951,12 +1954,13 @@ component("net") {
+     configs += [ "//build/config/compiler:optimize_max" ]
+   }
+ 
+-  if (is_cronet_build) {
++  if (is_cronet_build || is_cronet_native_build) {
+     sources += [
+       "cert/key_pinning_state_dynamic.cc",
+       "cert/key_pinning_state_dynamic.h",
+     ]
+-  } else {
++  }
++  if (!is_cronet_build) {
+     deps += [ "//mojo/public/cpp/bindings:default_construct_tag" ]
+   }
+ 
+diff --git a/net/cert/key_pinning_state.h b/net/cert/key_pinning_state.h
+index fa210cf..dded359 100644
+--- a/net/cert/key_pinning_state.h
++++ b/net/cert/key_pinning_state.h
+@@ -108,7 +108,7 @@ class NET_EXPORT KeyPinningState
+   virtual bool GetPKPState(std::string_view host,
+                            PKPState* pkp_result) const = 0;
+ 
+-#if BUILDFLAG(CRONET_BUILD)
++#if BUILDFLAG(CRONET_BUILD) || BUILDFLAG(CRONET_NATIVE_BUILD)
+   // Enables or disables public key pinning bypass for local trust anchors.
+   // Disabling the bypass for local trust anchors is highly discouraged.
+   // This method is used by Cronet only and *** MUST NOT *** be used by any
+diff --git a/net/features.gni b/net/features.gni
+index e8c37c9..406a67c 100644
+--- a/net/features.gni
++++ b/net/features.gni
+@@ -55,7 +55,8 @@ declare_args() {
+   # TODO(crbug.com/497882860): perhaps this should be defined by inclusions
+   # rather than exclusions? Including is_fuchsia is probably intentional but
+   # other builds included currently might not be.
+-  chrome_key_pinning_supported = !is_cronet_build && !is_ios
++  chrome_key_pinning_supported =
++      !is_cronet_build && !is_cronet_native_build && !is_ios
+ 
+   # Platforms for which certificate verification can be performed either using
+   # the builtin cert verifier with the Chrome Root Store, or with the platform
+diff --git a/net/http/transport_security_state.cc b/net/http/transport_security_state.cc
+index 6443fd3..01d1757 100644
+--- a/net/http/transport_security_state.cc
++++ b/net/http/transport_security_state.cc
+@@ -42,7 +42,7 @@
+ #include "net/net_buildflags.h"
+ #include "net/ssl/ssl_info.h"
+ 
+-#if BUILDFLAG(CRONET_BUILD)
++#if BUILDFLAG(CRONET_BUILD) || BUILDFLAG(CRONET_NATIVE_BUILD)
+ #include "net/cert/key_pinning_state_dynamic.h"
+ #elif BUILDFLAG(CHROME_KEY_PINNING_SUPPORTED)
+ #include "net/cert/key_pinning_state_chrome.h"
+@@ -378,7 +378,7 @@ void TransportSecurityState::AddHSTSInternal(
+   DirtyNotify();
+ }
+ 
+-#if BUILDFLAG(CRONET_BUILD)
++#if BUILDFLAG(CRONET_BUILD) || BUILDFLAG(CRONET_NATIVE_BUILD)
+ void TransportSecurityState::AddHPKP(std::string_view host,
+                                      base::Time expiry,
+                                      bool include_subdomains,
+diff --git a/net/http/transport_security_state.h b/net/http/transport_security_state.h
+index 9fdb061..4e525a5 100644
+--- a/net/http/transport_security_state.h
++++ b/net/http/transport_security_state.h
+@@ -34,7 +34,7 @@
+ #include "net/log/net_log_with_source.h"
+ #include "net/net_buildflags.h"
+ 
+-#if BUILDFLAG(CRONET_BUILD)
++#if BUILDFLAG(CRONET_BUILD) || BUILDFLAG(CRONET_NATIVE_BUILD)
+ #include "net/cert/key_pinning_state_dynamic.h"
+ #elif BUILDFLAG(CHROME_KEY_PINNING_SUPPORTED)
+ #include "net/cert/key_pinning_state_chrome.h"
+@@ -305,7 +305,7 @@ class NET_EXPORT TransportSecurityState {
+                base::Time expiry,
+                bool include_subdomains);
+ 
+-#if BUILDFLAG(CRONET_BUILD)
++#if BUILDFLAG(CRONET_BUILD) || BUILDFLAG(CRONET_NATIVE_BUILD)
+   // Adds explicitly-specified data as if it was processed from an HPKP header.
+   // Note: dynamic PKP data is not persisted.
+   void AddHPKP(std::string_view host,
+@@ -320,7 +320,7 @@ class NET_EXPORT TransportSecurityState {
+   // with local proxies and filters?" at
+   // https://www.chromium.org/Home/chromium-security/security-faq
+   void SetEnablePublicKeyPinningBypassForLocalTrustAnchors(bool value);
+-#endif  //  BUILDFLAG(CRONET_BUILD)
++#endif  //  BUILDFLAG(CRONET_BUILD) || BUILDFLAG(CRONET_NATIVE_BUILD)
+ 
+   void AssertCalledOnValidThread() const {
+     DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
+@@ -333,7 +333,7 @@ class NET_EXPORT TransportSecurityState {
+   // that it will pick up the new ScopedKeyPinningStateChromeDefaults state.
+   // TODO(crbug.com/497882860): remove this.
+   void ReinitializePinningForTesting() {
+-#if BUILDFLAG(CRONET_BUILD)
++#if BUILDFLAG(CRONET_BUILD) || BUILDFLAG(CRONET_NATIVE_BUILD)
+     key_pinning_state_ = base::MakeRefCounted<KeyPinningStateDynamic>();
+ #elif BUILDFLAG(CHROME_KEY_PINNING_SUPPORTED)
+     key_pinning_state_ = KeyPinningStateChrome::CreateForCompiledIn();
+@@ -390,7 +390,7 @@ class NET_EXPORT TransportSecurityState {
+   bool ct_emergency_disable_ = false;
+ 
+   // TODO(crbug.com/497882860): remove key pinning from TransportSecurityState.
+-#if BUILDFLAG(CRONET_BUILD)
++#if BUILDFLAG(CRONET_BUILD) || BUILDFLAG(CRONET_NATIVE_BUILD)
+   scoped_refptr<KeyPinningStateDynamic> key_pinning_state_ =
+       base::MakeRefCounted<KeyPinningStateDynamic>();
+ #elif BUILDFLAG(CHROME_KEY_PINNING_SUPPORTED)
+-- 
+2.54.0 (Apple Git-157)
+

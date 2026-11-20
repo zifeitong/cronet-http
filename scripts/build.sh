@@ -30,11 +30,9 @@ ls ../patches/*.patch | xargs -n 1 patch -p1 -i
 ./build/linux/sysroot_scripts/install-sysroot.py --arch=x64
 
 # Build shared library
-#
-# NOTE: build with the in-tree ninja instead of siso: the official tarball
-# stopped shipping third_party/siso as of 158.0.8127.36.
 gn_args=(
   'is_official_build=true'
+  'is_cronet_native_build=true'
   'disable_fieldtrial_testing_config=true'
   'symbol_level=0'
   'use_nss_client_certs=false'
