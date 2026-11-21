@@ -1,0 +1,25 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Zifei Tong <zifeitong@gmail.com>
+Date: Fri, 20 Nov 2026 16:00:00 -0800
+Subject: [PATCH] Use system python3 instead of the hermetic cpython3
+
+---
+ .gn | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/.gn b/.gn
+index 3f592ba2d5..619a193e17 100644
+--- a/.gn
++++ b/.gn
+@@ -12,7 +12,7 @@
+ buildconfig = "//build/config/BUILDCONFIG.gn"
+ 
+ # The hermetic Python interpreter to use by default.
+-script_executable = "//third_party/cpython3/host/bin/python3"
++script_executable = "python3"
+ 
+ # These arguments override the default values for items in a declare_args
+ # block. "gn args" in turn can override these.
+-- 
+2.51.2
+
